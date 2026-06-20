@@ -1,0 +1,7 @@
+﻿__pycache__/
+*.pyc
+downloads/
+.env
+*.egg-info/
+api/__pycache__/
+api/parsers/__pycache__/

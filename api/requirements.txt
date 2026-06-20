@@ -1,0 +1,4 @@
+# Vercel Python 环境不需要 yt-dlp（generic 解析器会优雅降级）
+# 如需 yt-dlp 支持，需在本地运行
+flask>=2.0
+requests>=2.25
