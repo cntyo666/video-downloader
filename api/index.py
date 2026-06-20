@@ -119,6 +119,14 @@ def download_proxy():
 
     if "bilivideo.com" in media_url or "bilibili.com" in media_url:
         headers["Referer"] = "https://www.bilibili.com/"
+    elif "wsukwai.com" in media_url or "kuaishou.com" in media_url or "gifshow.com" in media_url:
+        headers["Referer"] = "https://www.kuaishou.com/"
+    elif "douyin" in media_url or "tiktok" in media_url:
+        headers["Referer"] = "https://www.douyin.com/"
+    elif "xiaohongshu" in media_url or "xhscdn" in media_url:
+        headers["Referer"] = "https://www.xiaohongshu.com/"
+    elif "weibo" in media_url or "sinaimg" in media_url:
+        headers["Referer"] = "https://weibo.com/"
 
     try:
         import requests as req
