@@ -96,6 +96,52 @@ def batch_parse():
     return jsonify({"results": results, "total": len(results)})
 
 
+@app.route("/api/refresh_download_url", methods=["POST"])
+def refresh_download_url():
+    """用 yt-dlp 从原始页面重新提取下载链接（不下载文件）"""
+    data = request.get_json()
+    original_url = data.get("url", "")
+    media_type = data.get("type", "video")
+    extra_cookies = data.get("cookies", "")
+
+    if not original_url:
+        return jsonify({"error": "无原始链接"}), 400
+
+    try:
+        import subprocess, tempfile, json as json_mod
+        tmp_dir = tempfile.mkdtemp()
+        ytdlp_cmd = [
+            "yt-dlp",
+            "--no-check-certificates",
+            "-f", "best[ext=mp4]/best" if media_type == "video" else "bestaudio[ext=m4a]/bestaudio/best",
+            "--no-playlist",
+            "--socket-timeout", "30",
+            "-j",  # 只输出 JSON 元数据，不下载
+        ]
+        if extra_cookies:
+            cookie_file = os.path.join(tmp_dir, "cookies.txt")
+            with open(cookie_file, 'w') as cf:
+                cf.write("# Netscape HTTP Cookie File\n")
+                for item in extra_cookies.split("; "):
+                    if "=" in item:
+                        k, v = item.split("=", 1)
+                        cf.write(f".kuaishou.com\tTRUE\t/\tFALSE\t0\t{k}\t{v}\n")
+            ytdlp_cmd.extend(["--cookies", cookie_file])
+        ytdlp_cmd.append(original_url)
+
+        result = subprocess.run(ytdlp_cmd, capture_output=True, text=True, timeout=30)
+        if result.returncode == 0 and result.stdout.strip():
+            info = json_mod.loads(result.stdout.strip().split('\n')[0])
+            fresh_url = info.get("url", "")
+            if fresh_url:
+                return jsonify({"url": fresh_url, "title": info.get("title", "")})
+
+        return jsonify({"error": "yt-dlp 未能提取链接"}), 500
+
+    except Exception as e:
+        return jsonify({"error": f"提取失败: {str(e)}"}), 500
+
+
 @app.route("/api/download", methods=["POST"])
 def download_proxy():
     """流式代理下载"""
@@ -132,7 +178,6 @@ def download_proxy():
     elif "weibo" in media_url or "sinaimg" in media_url:
         headers["Referer"] = "https://weibo.com/"
 
-    # 携带原始页面的 cookies（用于 CDN 鉴权）
     if extra_cookies:
         headers["Cookie"] = extra_cookies
 
