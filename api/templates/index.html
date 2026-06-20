@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎬 视频下载器 v2</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0a0f;--card:#12121a;--card2:#1a1a26;--border:#252536;
+  --accent:#7c6cf0;--accent2:#b0a4ff;--text:#e8e8f4;--text2:#7878a0;
+  --success:#2dd4bf;--error:#f87171;--warn:#fbbf24;
+  --radius:14px;--shadow:0 4px 24px rgba(0,0,0,0.3);
+}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  background:var(--bg);color:var(--text);min-height:100vh;
+  display:flex;flex-direction:column;
+}
+.container{max-width:860px;margin:0 auto;padding:20px;width:100%}
+
+/* Header */
+.header{text-align:center;padding:48px 0 32px;position:relative}
+.header::before{
+  content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:600px;height:200px;
+  background:radial-gradient(ellipse,rgba(124,108,240,0.12) 0%,transparent 70%);
+  pointer-events:none;
+}
+.header h1{font-size:2.2em;font-weight:800;margin-bottom:10px;letter-spacing:-0.02em}
+.header h1 .grad{
+  background:linear-gradient(135deg,var(--accent),var(--accent2),#ff6bcb);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.header p{color:var(--text2);font-size:0.95em;line-height:1.5}
+.tags{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:18px}
+.tag{
+  padding:5px 14px;border-radius:20px;font-size:0.78em;font-weight:500;
+  background:rgba(124,108,240,0.1);color:var(--accent2);border:1px solid rgba(124,108,240,0.2);
+  transition:all 0.2s;
+}
+.tag:hover{background:rgba(124,108,240,0.2);transform:translateY(-1px)}
+.tag.hot{background:rgba(248,113,113,0.1);color:var(--error);border-color:rgba(248,113,113,0.2)}
+
+/* Tabs */
+.tabs{
+  display:flex;gap:4px;margin-bottom:24px;background:var(--card);
+  border-radius:var(--radius);padding:5px;border:1px solid var(--border);
+}
+.tab{
+  flex:1;padding:13px;text-align:center;border-radius:10px;
+  cursor:pointer;transition:all 0.25s;font-size:0.92em;color:var(--text2);font-weight:500;
+  user-select:none;
+}
+.tab.active{background:var(--accent);color:white;font-weight:600;box-shadow:0 2px 12px rgba(124,108,240,0.3)}
+.tab:hover:not(.active){background:rgba(124,108,240,0.08);color:var(--text)}
+
+/* Panel */
+.panel{display:none}.panel.active{display:block}
+
+/* Card */
+.card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:28px;margin-bottom:16px;
+  box-shadow:var(--shadow);
+}
+
+/* Input */
+.input-group{position:relative}
+.input-group input,.input-group textarea{
+  width:100%;padding:16px 18px;background:var(--bg);border:1.5px solid var(--border);
+  border-radius:12px;color:var(--text);font-size:0.95em;outline:none;
+  transition:border-color 0.2s,box-shadow 0.2s;font-family:inherit;
+}
+.input-group input:focus,.input-group textarea:focus{
+  border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,108,240,0.15);
+}
+.input-group input::placeholder,.input-group textarea::placeholder{color:var(--text2)}
+.input-group textarea{min-height:160px;resize:vertical;line-height:1.6}
+
+/* Button */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:13px 28px;border:none;border-radius:11px;
+  font-size:0.95em;font-weight:600;cursor:pointer;
+  transition:all 0.2s;color:white;user-select:none;
+}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#9485ff)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(124,108,240,0.35)}
+.btn-primary:active{transform:translateY(0)}
+.btn-primary:disabled{opacity:0.45;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-success{background:var(--success);color:var(--bg)}
+.btn-success:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(45,212,191,0.3)}
+.btn-sm{padding:9px 18px;font-size:0.85em;border-radius:9px}
+.btn-group{display:flex;gap:12px;margin-top:18px;flex-wrap:wrap}
+
+/* Result */
+.result{
+  background:var(--card2);border:1px solid var(--border);
+  border-radius:12px;padding:20px;margin-top:16px;
+  animation:slideUp 0.35s ease;
+}
+@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.result-title{font-weight:700;font-size:1.08em;margin-bottom:10px;line-height:1.4}
+.result-meta{color:var(--text2);font-size:0.84em;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:14px}
+.result-meta span{display:inline-flex;align-items:center;gap:4px}
+.result-actions{display:flex;gap:10px;flex-wrap:wrap}
+.result-error{
+  color:var(--error);padding:14px;background:rgba(248,113,113,0.08);
+  border-radius:10px;font-size:0.9em;line-height:1.5;white-space:pre-wrap;
+}
+
+/* Status */
+.status{
+  margin-top:14px;padding:12px 18px;border-radius:10px;font-size:0.88em;
+  display:none;line-height:1.5;
+}
+.status.info{display:block;background:rgba(124,108,240,0.08);color:var(--accent2)}
+.status.success{display:block;background:rgba(45,212,191,0.08);color:var(--success)}
+.status.error{display:block;background:rgba(248,113,113,0.08);color:var(--error)}
+
+/* Progress */
+.progress{
+  width:100%;height:4px;background:var(--border);border-radius:2px;
+  margin-top:14px;overflow:hidden;display:none;
+}
+.progress.active{display:block}
+.progress .bar{
+  height:100%;border-radius:2px;transition:width 0.4s;width:0%;
+  background:linear-gradient(90deg,var(--accent),var(--accent2),#ff6bcb);
+}
+
+/* Spinner */
+.spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.25);border-top-color:white;border-radius:50%;animation:spin 0.6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Footer */
+.footer{text-align:center;padding:24px;color:var(--text2);font-size:0.78em;margin-top:auto}
+
+/* Toast */
+.toast{
+  position:fixed;top:24px;left:50%;transform:translateX(-50%);
+  padding:14px 24px;border-radius:12px;font-size:0.9em;font-weight:500;
+  z-index:999;opacity:0;transition:opacity 0.3s;pointer-events:none;
+  box-shadow:0 8px 32px rgba(0,0,0,0.4);
+}
+.toast.show{opacity:1}
+.toast.success{background:var(--success);color:var(--bg)}
+.toast.error{background:var(--error);color:white}
+
+/* Cover image */
+.result-cover{
+  width:120px;height:80px;object-fit:cover;border-radius:8px;
+  border:1px solid var(--border);flex-shrink:0;
+}
+.result-top{display:flex;gap:16px;align-items:flex-start}
+.result-info{flex:1;min-width:0}
+
+@media(max-width:640px){
+  .container{padding:14px}
+  .header{padding:32px 0 24px}
+  .header h1{font-size:1.6em}
+  .card{padding:18px}
+  .btn-group{flex-direction:column}
+  .btn{width:100%}
+  .result-top{flex-direction:column}
+  .result-cover{width:100%;height:160px}
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>🎬 <span class="grad">视频下载器</span></h1>
+    <p>无水印视频下载 · 支持批量解析 · 多平台通用</p>
+    <div class="tags">
+      <span class="tag hot">🔥 回森</span>
+      <span class="tag">抖音</span>
+      <span class="tag">快手</span>
+      <span class="tag">B站</span>
+      <span class="tag">小红书</span>
+      <span class="tag">微博</span>
+      <span class="tag">+yt-dlp</span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="single">🔍 单链接解析</div>
+    <div class="tab" data-tab="batch">📋 批量解析</div>
+  </div>
+
+  <div id="panel-single" class="panel active">
+    <div class="card">
+      <div class="input-group">
+        <input type="text" id="url" placeholder="粘贴视频链接... (支持回森/抖音/快手/B站/小红书/微博)" autocomplete="off" />
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" id="btn-parse" onclick="parseSingle()">
+          <span id="btn-parse-text">🔍 解析</span>
+        </button>
+      </div>
+      <div id="status-single" class="status"></div>
+      <div id="progress-single" class="progress"><div class="bar"></div></div>
+      <div id="result-single"></div>
+    </div>
+  </div>
+
+  <div id="panel-batch" class="panel">
+    <div class="card">
+      <div class="input-group">
+        <textarea id="batch" placeholder="粘贴多个链接（每行一个，或混在文本中自动提取）...&#10;&#10;示例:&#10;https://s.viviv.com/rJYldkDi&#10;https://v.douyin.com/xxx&#10;https://www.bilibili.com/video/BVxxx"></textarea>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" id="btn-batch" onclick="parseBatch()">
+          <span id="btn-batch-text">📋 批量解析</span>
+        </button>
+      </div>
+      <div id="status-batch" class="status"></div>
+      <div id="progress-batch" class="progress"><div class="bar"></div></div>
+      <div id="result-batch"></div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">🎬 视频下载器 v2 · 无水印 · 批量 · 多平台</div>
+<div id="toast" class="toast"></div>
+
+<script>
+// Tab switching
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// Helpers
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function setStatus(id, msg, type) {
+  const el = document.getElementById('status-' + id);
+  el.className = 'status ' + type;
+  el.textContent = msg;
+}
+
+function setProgress(id, pct) {
+  const el = document.getElementById('progress-' + id);
+  el.classList.add('active');
+  el.querySelector('.bar').style.width = pct + '%';
+}
+
+function hideProgress(id) {
+  document.getElementById('progress-' + id).classList.remove('active');
+}
+
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast ' + type + ' show';
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function renderResult(data, idx) {
+  if (data.error) {
+    return `<div class="result">
+      <div class="result-title">❌ ${esc(data.parser || '未知')} 解析失败</div>
+      <div class="result-error">${esc(data.error)}</div>
+    </div>`;
+  }
+
+  let coverHtml = '';
+  if (data.cover_url) {
+    coverHtml = `<img class="result-cover" src="${esc(data.cover_url)}" alt="cover" loading="lazy" onerror="this.style.display='none'" />`;
+  }
+
+  let actions = '';
+  if (data.video_url) {
+    actions += `<button class="btn btn-success btn-sm" onclick="doDownload(this,'${esc(data.video_url)}','${esc(data.title || '')}','video')">⬇️ 下载视频</button>`;
+  }
+  if (data.audio_url) {
+    actions += `<button class="btn btn-primary btn-sm" onclick="doDownload(this,'${esc(data.audio_url)}','${esc(data.title || '')}','audio')">🎵 下载音频</button>`;
+  }
+  if (!data.video_url && !data.audio_url) {
+    actions = '<span style="color:var(--warn)">⚠️ 未找到可下载的媒体</span>';
+  }
+
+  return `<div class="result">
+    <div class="result-top">
+      ${coverHtml}
+      <div class="result-info">
+        <div class="result-title">${esc(data.title || '未知标题')}</div>
+        <div class="result-meta">
+          <span>📱 ${esc(data.parser || data.platform || '')}</span>
+          ${data.author ? '<span>👤 ' + esc(data.author) + '</span>' : ''}
+          ${data.video_url ? '<span style="color:var(--success)">🎬 视频 ✓</span>' : ''}
+          ${data.audio_url ? '<span style="color:var(--accent2)">🎵 音频 ✓</span>' : ''}
+        </div>
+        <div class="result-actions">${actions}</div>
+      </div>
+    </div>
+    <div id="dl-${idx}" class="status" style="margin-top:10px"></div>
+  </div>`;
+}
+
+// Parse single
+async function parseSingle() {
+  const url = document.getElementById('url').value.trim();
+  if (!url) return setStatus('single', '请输入链接', 'error');
+
+  const btn = document.getElementById('btn-parse');
+  btn.disabled = true;
+  document.getElementById('btn-parse-text').innerHTML = '<span class="spin"></span> 解析中...';
+  setStatus('single', '正在解析，请稍候...', 'info');
+  setProgress('single', 50);
+  document.getElementById('result-single').innerHTML = '';
+
+  try {
+    const resp = await fetch('/api/parse', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({url})
+    });
+    const data = await resp.json();
+    hideProgress('single');
+
+    if (data.error) {
+      setStatus('single', '解析失败', 'error');
+      document.getElementById('result-single').innerHTML = renderResult(data, 0);
+    } else {
+      setStatus('single', '✅ 解析成功', 'success');
+      document.getElementById('result-single').innerHTML = renderResult(data, 0);
+    }
+  } catch(e) {
+    hideProgress('single');
+    setStatus('single', '网络错误: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    document.getElementById('btn-parse-text').textContent = '🔍 解析';
+  }
+}
+
+// Parse batch
+async function parseBatch() {
+  const text = document.getElementById('batch').value.trim();
+  if (!text) return setStatus('batch', '请输入链接', 'error');
+
+  const btn = document.getElementById('btn-batch');
+  btn.disabled = true;
+  document.getElementById('btn-batch-text').innerHTML = '<span class="spin"></span> 解析中...';
+  setStatus('batch', '正在批量解析...', 'info');
+  setProgress('batch', 30);
+  document.getElementById('result-batch').innerHTML = '';
+
+  try {
+    const resp = await fetch('/api/batch_parse', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text})
+    });
+    const data = await resp.json();
+    hideProgress('batch');
+
+    if (data.error) {
+      setStatus('batch', data.error, 'error');
+    } else {
+      setStatus('batch', `✅ 解析完成，共 ${data.total} 个链接`, 'success');
+      let html = '';
+      data.results.forEach((r, i) => { html += renderResult(r, i); });
+      document.getElementById('result-batch').innerHTML = html;
+    }
+  } catch(e) {
+    hideProgress('batch');
+    setStatus('batch', '网络错误: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    document.getElementById('btn-batch-text').textContent = '📋 批量解析';
+  }
+}
+
+// Download
+async function doDownload(btn, url, title, type) {
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.innerHTML = '<span class="spin"></span> 准备下载...';
+
+  try {
+    const resp = await fetch('/api/download', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({url, title, type})
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      toast('下载失败: ' + (err.error || '未知错误'), 'error');
+      btn.textContent = orig;
+      btn.disabled = false;
+      return;
+    }
+
+    const ct = resp.headers.get('Content-Type') || '';
+
+    // JSON 响应 = 快手 CDN 直连
+    if (ct.includes('json')) {
+      const data = await resp.json();
+      if (data.direct_url) {
+        const a = document.createElement('a');
+        a.href = data.direct_url;
+        a.download = (title || 'video') + (type === 'video' ? '.mp4' : '.m4a');
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        btn.textContent = '✅ 已触发下载';
+        toast('已开始下载（浏览器直连 CDN）', 'success');
+        btn.disabled = false;
+        setTimeout(() => { btn.textContent = orig; }, 3000);
+        return;
+      }
+    }
+
+    // 流式响应 = 代理下载
+    const disposition = resp.headers.get('Content-Disposition') || '';
+    const match = disposition.match(/filename="?([^"]+)"?/);
+    const filename = match ? match[1] : (title + (type === 'video' ? '.mp4' : '.m4a'));
+
+    const blob = await resp.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+
+    btn.textContent = '✅ 下载完成';
+    toast('下载完成', 'success');
+  } catch(e) {
+    toast('下载错误: ' + e.message, 'error');
+    btn.textContent = orig;
+  } finally {
+    btn.disabled = false;
+    if (btn.textContent.includes('spin')) btn.textContent = orig;
+  }
+}
+
+// Enter key
+document.getElementById('url').addEventListener('keydown', e => {
+  if (e.key === 'Enter') parseSingle();
+});
+</script>
+</body>
+</html>
