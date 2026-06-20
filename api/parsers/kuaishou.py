@@ -1,4 +1,4 @@
-﻿"""快手解析器"""
+"""快手解析器"""
 import re
 import requests
 from .base import BaseParser
@@ -16,7 +16,11 @@ class KuaishouParser(BaseParser):
         resp = requests.get(real_url, headers=headers, timeout=15)
         html = resp.text
 
-        data = {"platform": "快手"}
+        # 提取 cookies 用于后续下载鉴权
+        cookies = resp.cookies.get_dict()
+        cookie_str = "; ".join(f"{k}={v}" for k, v in cookies.items())
+
+        data = {"platform": "快手", "_cookies": cookie_str}
 
         # 标题
         title_m = re.search(r'<title[^>]*>(.*?)</title>', html, re.S)

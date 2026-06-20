@@ -65,6 +65,9 @@ def parse_url():
         parser = get_parser(url)
         result = parser.parse(url)
         result["parser"] = parser.name
+        # 传递 cookies 给前端（用于下载时鉴权）
+        if "_cookies" in result:
+            result["cookies"] = result.pop("_cookies")
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -100,6 +103,7 @@ def download_proxy():
     media_url = data.get("url", "")
     title = data.get("title", f"video_{int(time.time())}")
     media_type = data.get("type", "video")
+    extra_cookies = data.get("cookies", "")
 
     if not media_url:
         return jsonify({"error": "无下载地址"}), 400
@@ -127,6 +131,10 @@ def download_proxy():
         headers["Referer"] = "https://www.xiaohongshu.com/"
     elif "weibo" in media_url or "sinaimg" in media_url:
         headers["Referer"] = "https://weibo.com/"
+
+    # 携带原始页面的 cookies（用于 CDN 鉴权）
+    if extra_cookies:
+        headers["Cookie"] = extra_cookies
 
     try:
         import requests as req
